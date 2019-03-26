@@ -61,10 +61,15 @@ rule all:
 
 #Multi
 rule qtl_ldscannot:
-    input: zscores = zscores_ldsc, annot='../../../one_plus_annot_torus/' + base_dir + '{annot}.oneplus.annot.tsv.gz'
-    output: qtl = 'torus_' + base_dir + 'ga.{annot}.oneplus.rst'
-    params: log="qtl", jobname="qtl", mem="15G"
-    shell: "~/dap/torus_src/torus -d {input.zscores} -annot {input.annot} --load_zval -est -qtl > {output.qtl}"
+    input:
+        zscores = zscores_ldsc,
+        annot='../../../one_plus_annot_torus/' + base_dir + '{annot}.oneplus.annot.tsv.gz'
+    output:
+        qtl = 'torus_' + base_dir + 'ga.{annot}.oneplus.rst'
+    params:
+        log="qtl", jobname="qtl", mem="15G"
+    shell:
+        "~/dap/torus_src/torus -d {input.zscores} -annot {input.annot} --load_zval -est -qtl > {output.qtl}"
 
 rule qtl_full:
     input: zscores = zscores_ldsc, annot='../../../one_plus_annot_torus/' + base_dir + 'full.annot.tsv.gz'

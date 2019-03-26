@@ -44,14 +44,17 @@ dsc_annotations.extend(mark_annots)
 #Data
 
 rule all:
-    input:  expand("dsc.{chr}.annot.gz", chr=range(1, 23))
+    input:  expand("dsc.{chrom}.annot.gz", chr=range(1, 23))
 
 ## Make z-scores file
 rule var_bed:
-    input: bim="../1000G_ldscores/1000G_EUR_Phase3_plink/1000G.EUR.QC.{chr}.bim"
-    output: var_bed =  "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chr}.variants.bed"
-    params: log="var", jobname="var", mem="5G", 
-            temp = "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chr}.variants.bed.temp"
+    input:
+        bim="../1000G_ldscores/1000G_EUR_Phase3_plink/1000G.EUR.QC.{chrom}.bim"
+    output:
+        var_bed =  "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chrom}.variants.bed"
+    params:
+        log="var", jobname="var", mem="5G",
+        temp = "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chrom}.variants.bed.temp"
     shell:  
         """
         awk '{{print "chr"$1 "\t"$4"\t" ($4 + 1) "\t" $2}}' {input.bim} > {params.temp}
@@ -61,20 +64,30 @@ rule var_bed:
         
 
 rule bed_overlap:
-    input:  var_bed = "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chr}.variants.bed", 
-            dsc_bed = "../dsc_annotation/{annot}.bed"
-    output:  var_annot = "{annot}.{chr}.annot" 
-    params: log="procvar2", jobname="procvar2", mem="2G"
+    input:
+        var_bed = "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chrom}.variants.bed",
+        dsc_bed = "../dsc_annotation/{annot}.bed"
+    output:
+        var_annot = "{annot}.{chrom}.annot"
+    resources:
+        log="procvar2",
+        jobname="procvar2",
+        mem="2G"
     shell: 
         "~/bedops/bin/bedops -e {input.var_bed} {input.dsc_bed} > {output.var_annot}"
 
-annot_string = " ".join(dsc_annotations)
+
 rule annot:
-    input: dsc_beds = expand("{annot}.{{chr}}.annot", annot = dsc_annotations),
-            bim="../1000G_ldscores/1000G_EUR_Phase3_plink/1000G.EUR.QC.{chr}.bim"
-    output: annot = "dsc.{chr}.annot.gz"
-    params: log="annot2", jobname="annot2", mem="5G", annot_string=annot_string
-    shell:
-        """
-        Rscript write_annot.R {output.annot} {wildcards.chr} {params.annot_string} 
-        """
+    input:
+        dsc_beds = expand("{annot}.{{chrom}}.annot", annot = dsc_annotations),
+        bim="../1000G_ldscores/1000G_EUR_Phase3_plink/1000G.EUR.QC.{chrom}.bim"
+    output:
+        annot = "dsc.{chrom}.annot.gz"
+    params:
+        chrom="{chrom}"
+    resources:
+        log="annot2",
+        jobname="annot2",
+        mem="5G"
+    script:
+        "R/write_annot.R"

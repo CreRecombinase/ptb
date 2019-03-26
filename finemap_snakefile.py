@@ -1,3 +1,4 @@
+-*- eval: (snakemake-mode); -*-
 # Snakemake pipeline for running fine mapping with DAP-G and SuSiE
 #
 #
@@ -46,11 +47,9 @@ meth = ["cv", "topK"]
 lam = [-1, 0] 
 
 rule all:
-    input: #expand(susie_dir + "susie.{b}.RDS" , b = windows), 
-           #expand(dap_dir + "dapfinemap.{pr}.{b}.result" ,pr = priors, b = windows), 
-           caviarbf_dir + "/thresh0.001/lasso_eps0.01_cv_lam-1.loglik",
-           caviarbf_dir + "/thresh0.001/lasso_eps0.01_cv_lam0.loglik",
-           caviarbf_dir + "/thresh0.001/lasso_eps0.01_topk_lam-1.loglik"
+    input:
+        expand(dap_dir + "dapfinemap.{pr}.{b}.result" ,pr = priors, b = windows),
+
 
 zscores = "ga.zscores.tsv.gz"
 data = "/project/mstephens/data/external_public_supp/gwas_summary_statistics/raw_summary_statistics/23_and_me_ptb/23andMe_ga.RDS"
@@ -58,46 +57,84 @@ plink_root = "/project2/xinhe/1kg/plink_format/EUR.1kg"
 
 windowstr = " ".join(windows)
 rule format1:
-    input: zscores = zscores, data = data
-    output: expand(zscore_dir + "data.{b}.RDS", b = windows), expand(zscore_dir+"snps.{b}.txt", b = windows)
-    params: log="f1", jobname="f1", mem="10G", windowstr=windowstr, dir = zscore_dir
-    shell: "Rscript R/format1.R {params.dir} {params.windowstr}"
+    input:
+        zscores = zscores,
+        prior_base=expand("torus_base1/base/{b}.prior",b=windows)
+        prior_full=expand("torus_base1/full/{b}.prior",b=windows)
+        data = data
+    output:
+        data_f=expand(zscore_dir + "data.{b}.RDS", b = windows),
+        snp_f=expand(zscore_dir+"snps.{b}.txt", b = windows)
+    resources:
+        log="f1",
+        jobname="f1",
+        mem="10G",
+    script:
+        "R/format1.R"
 
    
 rule frq_plink:
-    input: snps = zscore_dir + "snps.{b}.txt", 
-           bed = plink_root + ".bed",
-           bim = plink_root + ".bim",
-           fam = plink_root + ".fam"
-    output: frq = plink_dir + "{b}.frq"
-    params: log="frq", jobname="frq", mem="10G", plink_root = plink_root, dir = plink_dir
-    shell: "plink --bfile {params.plink_root} --extract {input.snps} --freq --out {params.dir}{wildcards.b}"
+    input:
+        snps = zscore_dir + "snps.{b}.txt",
+        bed = plink_root + ".bed",
+        bim = plink_root + ".bim",
+        fam = plink_root + ".fam"
+    output:
+        frq = plink_dir + "{b}.frq"
+    params:
+        log="frq",
+        jobname="frq",
+        mem="10G",
+        plink_root = plink_root,
+        dir = plink_dir
+    shell:
+        "plink --bfile {params.plink_root} --extract {input.snps} --freq --out {params.dir}{wildcards.b}"
 
 rule process:
-    input: data = zscore_dir + "data.{b}.RDS", frq = plink_dir + "{b}.frq"
-    output: data = zscore_dir + "data.filtered.{b}.RDS", 
-            snps = zscore_dir + "snps.filtered.{b}.txt", 
-            zscores = zscore_dir + "zscores.filtered.{b}.tsv"
-    params: log="f2", jobname="f2", mem="1G" , dir = zscore_dir
-    shell: "Rscript R/strand.R {wildcards.b} {input.data} {input.frq} {params.dir}"
+    input:
+        data = zscore_dir + "data.{b}.RDS",
+        frq = plink_dir + "{b}.frq"
+    output:
+        data = zscore_dir + "data.filtered.{b}.RDS",
+        snps = zscore_dir + "snps.filtered.{b}.txt",
+        zscores = zscore_dir + "zscores.filtered.{b}.tsv"
+    resources:
+        log="f2",
+        jobname="f2",
+        mem="1G"
+    script: "R/strand.R"
 
 rule ld_plink:
-    input: snps = zscore_dir + "snps.filtered.{b}.txt", 
-           bed = plink_root + ".bed",
-           bim = plink_root + ".bim",
-           fam = plink_root + ".fam"
-    output: frq = plink_dir + "{b}.filtered.frq", ld = plink_dir + "{b}.filtered.ld"
-    params: log="ld", jobname="ld", mem="10G", plink_root = plink_root, dir = plink_dir
-    shell: "plink --bfile {params.plink_root} --extract {input.snps} --freq \
-            --r square --out {params.dir}{wildcards.b}.filtered"
+    input:
+        snps = zscore_dir + "snps.filtered.{b}.txt",
+        bed = plink_root + ".bed",
+        bim = plink_root + ".bim",
+        fam = plink_root + ".fam"
+    output:
+        frq = plink_dir + "{b}.filtered.frq",
+        ld = plink_dir + "{b}.filtered.ld"
+    params:
+        pdir = plink_dir
+    resources:
+        log="ld",
+        jobname="ld",
+        mem="10G",
+        plink_root = plink_root,
 
+    shell: "plink --bfile {params.plink_root} --extract {input.snps} --freq \
+            --r square --out {params.pdir}{wildcards.b}.filtered"
 
 rule dap:
-    input: zscores = zscore_dir + "zscores.filtered.{b}.tsv",
-           ld = plink_dir + "{b}.filtered.ld",
-           prior = "torus_base1/{pr}/{b}.prior",
-    output: out = dap_dir + "dapfinemap.{pr}.{b}.result"
-    params: log="dap", jobname="dap", mem="40G"
+    input:
+        zscores = zscore_dir + "zscores.filtered.{b}.tsv",
+        ld = plink_dir + "{b}.filtered.ld",
+        prior = "torus_base1/{pr}/{b}.prior"
+    output:
+        out = dap_dir + "dapfinemap.{pr}.{b}.result"
+    resources:
+        log="dap",
+        jobname="dap",
+        mem="40G"
     shell: "~/dap/dap_src/dap-g -d_z {input.zscores} \
                                  -d_ld {input.ld} \
                                  -o {output.out} \

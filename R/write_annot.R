@@ -2,14 +2,16 @@ library(readr)
 library(purrr)
 library(dplyr)
 
-args <- commandArgs(trailingOnly=TRUE)
-out <- args[1]
-chr <- args[2]
-annots <- args[-c(1, 2)]
+#args <- commandArgs(trailingOnly=TRUE)
+                                        #out <- args[1]
+fl <- snakemake@input[["dsc_beds"]]
+chr <- snakemake@params[["chrom"]]
+snpf <- snakemake@input[["bim"]]
+out <- snakemake@output[["annot"]]
 
-fl <- paste0(annots, ".", chr, ".annot")
 
-snps <- read_tsv(paste0("../1000G_ldscores/1000G_EUR_Phase3_plink/1000G.EUR.QC.", chr, ".bim"), 
+
+snps <- read_tsv(snpf,
                  col_names=c("CHR", "SNP", "cM", "BP", "A1", "A2"))
 
 annot_df <- map(fl, function(x){read_tsv(x, col_names=c("chr", "start", "stop", "SNP"))})
