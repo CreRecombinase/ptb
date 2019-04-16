@@ -1,0 +1,53 @@
+from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
+
+
+HTTP = HTTPRemoteProvider()
+
+rule gwas2db:
+    input:
+        config["newgwas_f"]
+    output:
+        config["ptb_scratch"]+"ga_gwas.db"
+    shell:
+        "./ga_gwas.sh {output} {input}"
+
+rule ldetect_dl:
+    input:
+        HTTP.remote("https://bitbucket.org/nygcresearch/ldetect-data/raw/ac125e47bf7ff3e90be31f278a7b6a61daaba0dc/EUR/fourier_ls-all.bed")
+    output:
+        "../ldetect_data/fourier_ls-all.bed"
+    run:
+        shell("mv {input} {output}")
+
+
+rule gwas2GR:
+    input:
+        input_f=config["ptb_scratch"]+"ga_gwas.db",
+        ldf="../ldetect_data/fourier_ls-all.bed"
+    output:
+        rds=config["ptb_scratch"]+"{ld}_ga_gwas_reg.RDS",
+        txtf=config["ptb_scratch"]+"{ld}_ga_gwas_z.txt.gz"
+    params:
+        ld_reg="{ld}",
+        beta_v="beta",
+        se_v="se"
+    singularity:
+         config["singularity_url"]
+    script:
+        "R/db2GR.R"
+
+rule gwas2GR_local:
+    input:
+        input_f=config["ptb_scratch"]+"ga_gwas.db",
+        ldf="../ldetect_data/fourier_ls-all.bed"
+    output:
+        rds=config["ptb_scratch"]+"{ld}_localga_gwas_reg.RDS",
+        txtf=config["ptb_scratch"]+"{ld}_localga_gwas_z.txt.gz"
+    params:
+        ld_reg="{ld}",
+        beta_v="beta.local",
+        se_v="se.local"
+    singularity:
+        config["singularity_url"]
+    script:
+        "R/db2GR.R"

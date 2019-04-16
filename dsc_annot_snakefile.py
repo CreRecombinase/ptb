@@ -1,4 +1,4 @@
--*- eval: (snakemake-mode); -*-
+#-*- eval: (snakemake-mode); -*-
 # Snakemake pipeline for running torus multivariate analysis
 #
 # assumes some files already present form running enrichment_analysis.snakefile.py
@@ -43,23 +43,20 @@ dsc_annotations.extend(mark_annots)
 
 #Data
 
-rule all:
-    input:  expand("dsc.{chrom}.annot.gz", chr=range(1, 23))
 
 ## Make z-scores file
 rule var_bed:
     input:
         bim="../1000G_ldscores/1000G_EUR_Phase3_plink/1000G.EUR.QC.{chrom}.bim"
     output:
-        var_bed =  "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chrom}.variants.bed"
-    params:
-        log="var", jobname="var", mem="5G",
-        temp = "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chrom}.variants.bed.temp"
+        var_bed =  "../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chrom}.variants.bed",
+        tempp = temp("../1000G_ldscores/1000G_EUR_Plink_Variants/1000G.EUR.QC.{chrom}.variants.bed.temp")
+    resources:
+        mem_gb=5
     shell:  
         """
-        awk '{{print "chr"$1 "\t"$4"\t" ($4 + 1) "\t" $2}}' {input.bim} > {params.temp}
-        ~/bedops/bin/sort-bed {params.temp} > {output.var_bed}
-        rm {params.temp}
+        awk '{{print "chr"$1 "\t"$4"\t" ($4 + 1) "\t" $2}}' {input.bim} > {output.tempp}
+        sort-bed {output.tempp} > {output.var_bed}
         """ 
         
 
@@ -70,11 +67,9 @@ rule bed_overlap:
     output:
         var_annot = "{annot}.{chrom}.annot"
     resources:
-        log="procvar2",
-        jobname="procvar2",
-        mem="2G"
+        mem_gb=2
     shell: 
-        "~/bedops/bin/bedops -e {input.var_bed} {input.dsc_bed} > {output.var_annot}"
+        "bedops -e {input.var_bed} {input.dsc_bed} > {output.var_annot}"
 
 
 rule annot:
@@ -86,8 +81,6 @@ rule annot:
     params:
         chrom="{chrom}"
     resources:
-        log="annot2",
-        jobname="annot2",
-        mem="5G"
+        mem_gb=5
     script:
         "R/write_annot.R"

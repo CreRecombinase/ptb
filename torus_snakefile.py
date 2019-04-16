@@ -1,4 +1,4 @@
--*- eval: (snakemake-mode); -*-
+#-*- eval: (snakemake-mode); -*-
 # Snakemake pipeline for running torus multivariate analysis
 #
 # assumes some files already present form running enrichment_analysis.snakefile.py
@@ -47,11 +47,6 @@ base_dir = "base2/"
 zscores_ldsc = "../ga.zscores.tsv.gz"
 
 
-rule all:
-    input: expand("torus_" + base_dir + "ga.{annot}.oneplus.rst", annot = dsc_annot1), 
-           "torus_" + base_dir + "ga.full.rst", "torus_" + base_dir + "ga.base.rst"
-    #input: expand("annotations/{annot}_annotation.oneplus.ldsc.tsv.gz", annot = dsc_annot1)
-
 #Z score files already made
 #####
 
@@ -66,20 +61,29 @@ rule qtl_ldscannot:
         annot='../../../one_plus_annot_torus/' + base_dir + '{annot}.oneplus.annot.tsv.gz'
     output:
         qtl = 'torus_' + base_dir + 'ga.{annot}.oneplus.rst'
-    params:
-        log="qtl", jobname="qtl", mem="15G"
+    resources:
+        mem_gb=15
     shell:
-        "~/dap/torus_src/torus -d {input.zscores} -annot {input.annot} --load_zval -est -qtl > {output.qtl}"
+        config["torus_cmd"]+" -d {input.zscores} -annot {input.annot} --load_zval -est -qtl > {output.qtl}"
 
 rule qtl_full:
-    input: zscores = zscores_ldsc, annot='../../../one_plus_annot_torus/' + base_dir + 'full.annot.tsv.gz'
-    output: qtl = 'torus_' + base_dir + 'ga.full.rst'
-    params: log="qtl", jobname="qtl", mem="15G"
-    shell: "~/dap/torus_src/torus -d {input.zscores} -annot {input.annot} --load_zval -est -qtl -dump_prior full > {output.qtl}"
+    input:
+        zscores = zscores_ldsc,
+        annot='../../../one_plus_annot_torus/' + base_dir + 'full.annot.tsv.gz'
+    output:
+        qtl = 'torus_' + base_dir + 'ga.full.rst'
+    resources:
+        mem_gb=15
+    shell:
+        config["torus_cmd"]+" -d {input.zscores} -annot {input.annot} --load_zval -est -qtl -dump_prior full > {output.qtl}"
 
 rule qtl_base:
-    input: zscores = zscores_ldsc, annot='../../../one_plus_annot_torus/' + base_dir + 'base.annot.tsv.gz'
-    output: qtl = 'torus_' + base_dir + 'ga.base.rst'
-    params: log="qtl", jobname="qtl", mem="15G"
-    shell: "~/dap/torus_src/torus -d {input.zscores} -annot {input.annot} --load_zval -est -qtl -dump_prior base > {output.qtl}"
-
+    input:
+        zscores = zscores_ldsc,
+        annot='../../../one_plus_annot_torus/' + base_dir + 'base.annot.tsv.gz'
+    output:
+        qtl = 'torus_' + base_dir + 'ga.base.rst'
+    resources:
+        mem_gb=15
+    shell:
+        config["torus_cmd"]+" -d {input.zscores} -annot {input.annot} --load_zval -est -qtl -dump_prior base > {output.qtl}"

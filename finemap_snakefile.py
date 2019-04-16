@@ -1,4 +1,4 @@
--*- eval: (snakemake-mode); -*-
+#-*- eval: (snakemake-mode); -*-
 # Snakemake pipeline for running fine mapping with DAP-G and SuSiE
 #
 #
@@ -46,10 +46,6 @@ eps = [0.01]
 meth = ["cv", "topK"]
 lam = [-1, 0] 
 
-rule all:
-    input:
-        expand(dap_dir + "dapfinemap.{pr}.{b}.result" ,pr = priors, b = windows),
-
 
 zscores = "ga.zscores.tsv.gz"
 data = "/project/mstephens/data/external_public_supp/gwas_summary_statistics/raw_summary_statistics/23_and_me_ptb/23andMe_ga.RDS"
@@ -59,16 +55,14 @@ windowstr = " ".join(windows)
 rule format1:
     input:
         zscores = zscores,
-        prior_base=expand("torus_base1/base/{b}.prior",b=windows)
-        prior_full=expand("torus_base1/full/{b}.prior",b=windows)
+        prior_base=expand("torus_base1/base/{b}.prior",b=windows),
+        prior_full=expand("torus_base1/full/{b}.prior",b=windows),
         data = data
     output:
         data_f=expand(zscore_dir + "data.{b}.RDS", b = windows),
         snp_f=expand(zscore_dir+"snps.{b}.txt", b = windows)
     resources:
-        log="f1",
-        jobname="f1",
-        mem="10G",
+        mem_gb=10
     script:
         "R/format1.R"
 
@@ -99,9 +93,7 @@ rule process:
         snps = zscore_dir + "snps.filtered.{b}.txt",
         zscores = zscore_dir + "zscores.filtered.{b}.tsv"
     resources:
-        log="f2",
-        jobname="f2",
-        mem="1G"
+        mem_gb=1
     script: "R/strand.R"
 
 rule ld_plink:
@@ -114,13 +106,10 @@ rule ld_plink:
         frq = plink_dir + "{b}.filtered.frq",
         ld = plink_dir + "{b}.filtered.ld"
     params:
-        pdir = plink_dir
+        pdir = plink_dir,
+        plink_root = plink_root
     resources:
-        log="ld",
-        jobname="ld",
-        mem="10G",
-        plink_root = plink_root,
-
+        mem_gb=10
     shell: "plink --bfile {params.plink_root} --extract {input.snps} --freq \
             --r square --out {params.pdir}{wildcards.b}.filtered"
 
@@ -132,9 +121,7 @@ rule dap:
     output:
         out = dap_dir + "dapfinemap.{pr}.{b}.result"
     resources:
-        log="dap",
-        jobname="dap",
-        mem="40G"
+        mem=40
     shell: "~/dap/dap_src/dap-g -d_z {input.zscores} \
                                  -d_ld {input.ld} \
                                  -o {output.out} \
