@@ -9,6 +9,8 @@ outf <- snakemake@output[["outf"]]
 
 beta_v <- snakemake@params[["beta_v"]]
 se_v <- snakemake@params[["se_v"]]
+stopifnot(!is.null(beta_v),!is.null(se_v))
+save.image(paste0("ts.",beta_v,"RData"))
 
 ld_df <- read_tsv(input_f, col_types = cols(
                               chr = col_character(),
@@ -34,8 +36,8 @@ gwas_df <- dplyr::tbl(dplyr::src_sqlite(path = input_db, create = F),
 gwas_z <- dplyr::select(gwas_df,
                         SNP = id,
                         chrom, pos,
-                        beta = !!beta_v,
-                        se = !!se_v) %>%
+                        beta = !! beta_v,
+                        se = !! se_v) %>%
     dplyr::mutate(`z-val` = beta / se)
 
 
