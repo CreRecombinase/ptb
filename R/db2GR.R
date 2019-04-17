@@ -54,14 +54,15 @@ snp_df <- gwas_z %>%
     mutate(chr = as.integer(chr), pos = as.integer(pos))  %>%
     distinct(chr, pos, .keep_all = T) %>%
     arrange(chr, pos)
-snp_df <- mutate(snp_df,
-                 region_id = assign_snp_block(break_chr = ld_df$chrom,
+reg_id <- assign_snp_block(break_chr = ld_df$chrom,
                                               break_start = ld_df$start,
                                               break_stop = ld_df$stop,
                                               break_id = ld_df$region_id,
-                                              snp_chr = chr,
-                                              pos = pos,
-                                              assign_all = T))
+                                              snp_chr = snp_df$chr,
+                                              pos = snp_df$pos,
+                                              assign_all = T)
+snp_df <- mutate(snp_df,
+                 region_id = reg_id)
 
 snp_df <- dplyr::group_by(snp_df, chr, region_id) %>%
     dplyr::summarise(ct = n()) %>%
