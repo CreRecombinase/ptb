@@ -10,7 +10,7 @@ outf <- snakemake@output[["outf"]]
 beta_v <- snakemake@params[["beta_v"]]
 se_v <- snakemake@params[["se_v"]]
 stopifnot(!is.null(beta_v),!is.null(se_v))
-save.image(paste0("ts.",beta_v,"RData"))
+save.image(paste0("ts.", beta_v, "RData"))
 
 ld_df <- read_tsv(input_f, col_types = cols(
                               chr = col_character(),
@@ -24,21 +24,22 @@ ld_df <- read_tsv(input_f, col_types = cols(
     mutate(stop = if_else(stop == max(stop),
                           .Machine$integer.max, stop)) %>%
     ungroup() %>%
-    mutate(region_id = 1:n())
+    mutate(region_id = 1:n(),
+           chrom = as.integer(gsub("chr", "", chrom)))
 
 
 stopifnot(file.exists(input_db))
 output_txtf <- snakemake@output[["txtf"]]
 output_rds <- snakemake@output[["rds"]]
 gwas_df <- dplyr::tbl(dplyr::src_sqlite(path = input_db, create = F),
-                      "gwas") %>%
+                      "gwas") %>% select(-pval, -Q, -het, -id)
     collect()
 gwas_z <- dplyr::select(gwas_df,
                         SNP = id,
                         chrom, pos,
                         beta = !! beta_v,
                         se = !! se_v) %>%
-    dplyr::mutate(`z-val` = beta / se)
+    dplyr::mutate(`z-val` = as.numeric(beta) / as.numeric(se))
 
 
 m_gwas_df <- select(gwas_df,
@@ -52,11 +53,11 @@ m_gwas_df <- select(gwas_df,
 
 snp_df <- gwas_z %>%
     select(SNP, chr = chrom, pos, `z-val`) %>%
-    mutate(chr = as.integer(gsub("chr", "", chr)), pos = as.integer(pos))  %>%
+    mutate(chr = as.integer(chr), pos = as.integer(pos))  %>%
     distinct(chr, pos, .keep_all = T) %>%
     arrange(chr, pos)
 snp_df <- mutate(snp_df,
-                 region_id = assign_snp_block(break_chr = ld_df$ch,
+                 region_id = assign_snp_block(break_chr = ld_df$chrom,
                                               break_start = ld_df$start,
                                               break_stop = ld_df$stop,
                                               break_id = ld_df$region_id,
