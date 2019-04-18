@@ -1,0 +1,8 @@
+---
+torus_cmd: "/project2/xinhe/software/dap/torus_src/torus"
+ptb_scratch: "/scratch/midway2/nwknoblauch/ptb/"
+newgwas_f: "/project/mstephens/data/external_public_supp/gwas_summary_statistics/raw_summary_statistics/23_and_me_ptb/ga_gwas_181510/meta.stat"
+singularity_url: "shub://CreRecombinase/docker-eigenh5"
+
+
+
